@@ -1,0 +1,795 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <title>FREEDS – Portail clients</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    body {
+      min-height: 100vh;
+      background: rgb(151, 1, 1); /* rouge très foncé */
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      color: #ffffff;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 420px;
+      background: rgba(0, 0, 0, 0.45);
+      border-radius: 24px;
+      padding: 32px 28px;
+      box-shadow: 0 18px 45px rgba(0, 0, 0, 0.6);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .logo-wrapper {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 24px;
+    }
+
+    .logo-wrapper img {
+      max-width: 190px;
+      height: auto;
+      display: block;
+    }
+
+    .title {
+      text-align: center;
+      margin-bottom: 8px;
+      font-size: 1.4rem;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .subtitle {
+      text-align: center;
+      font-size: 0.9rem;
+      opacity: 0.85;
+      margin-bottom: 24px;
+    }
+
+    .form-group {
+      margin-bottom: 16px;
+    }
+
+    label {
+      display: block;
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 6px;
+      opacity: 0.8;
+    }
+
+    input {
+      width: 100%;
+      padding: 11px 12px;
+      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      background: rgba(0, 0, 0, 0.35);
+      color: #ffffff;
+      font-size: 0.95rem;
+      outline: none;
+      transition: border 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+    }
+
+    input::placeholder {
+      color: rgba(255, 255, 255, 0.4);
+    }
+
+    input:focus {
+      border-color: #ff4d4d;
+      box-shadow: 0 0 0 1px rgba(255, 77, 77, 0.6);
+      background: rgba(0, 0, 0, 0.6);
+    }
+
+    /* BOUTONS – base commune (tous les boutons) */
+    .btn,
+    .btn-secondary {
+      position: relative;
+      width: 100%;
+      margin-top: 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(255, 255, 255, 0.35);
+      padding: 11px 16px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      cursor: pointer;
+      background: transparent;
+      color: #ffffff;
+      overflow: hidden;
+      z-index: 0;
+      transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+    }
+
+    /* Barre rouge animée au survol (tous les boutons) */
+    .btn::before,
+    .btn-secondary::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, #ff4d4d, #ff1f1f);
+      transform: translateX(-100%);
+      transition: transform 0.25s ease;
+      z-index: -1;
+    }
+
+    .btn:hover::before,
+    .btn-secondary:hover::before {
+      transform: translateX(0); /* Remplissage horizontal */
+    }
+
+    .btn:hover,
+    .btn-secondary:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.7);
+      border-color: transparent;
+      color: #ffffff;
+    }
+
+    .btn:active,
+    .btn-secondary:active {
+      transform: translateY(0);
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.6);
+    }
+
+    .helper {
+      margin-top: 12px;
+      font-size: 0.8rem;
+      text-align: center;
+      opacity: 0.8;
+    }
+
+    .error {
+      margin-top: 10px;
+      font-size: 0.8rem;
+      text-align: center;
+      color: #ffb3b3;
+      min-height: 16px;
+    }
+
+    .footer {
+      margin-top: 18px;
+      text-align: center;
+      font-size: 0.75rem;
+      opacity: 0.6;
+    }
+
+    /* MENU PAGE */
+    #menuBox .btn,
+    #menuBox .btn-secondary {
+      margin-top: 14px;
+    }
+
+    /* Logo client en blanc quand custom */
+    .white-logo {
+      filter: brightness(0) invert(1);
+    }
+
+    /* OVERLAY ADMIN (CMD+M) */
+    .overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.75);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+    }
+
+    .overlay-content {
+      width: 95%;
+      max-width: 900px;
+      max-height: 80vh;
+      background: rgba(20, 20, 20, 0.95);
+      border-radius: 20px;
+      padding: 20px 24px;
+      overflow-y: auto;
+      border: 1px solid rgba(255,255,255,0.12);
+    }
+
+    .overlay-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+    }
+
+    .overlay-title {
+      font-size: 1.1rem;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .overlay-close {
+      border: none;
+      background: transparent;
+      color: #fff;
+      font-size: 1.4rem;
+      cursor: pointer;
+    }
+
+    .admin-tip {
+      font-size: 0.8rem;
+      opacity: 0.8;
+      margin-bottom: 12px;
+    }
+
+    .admin-header-row {
+      display: grid;
+      grid-template-columns: 1.1fr 2fr 2fr 1.4fr;
+      gap: 10px;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      opacity: 0.7;
+      margin-bottom: 6px;
+    }
+
+    .admin-row {
+      display: grid;
+      grid-template-columns: 1.1fr 2fr 2fr 1.4fr;
+      gap: 10px;
+      align-items: center;
+      margin-bottom: 10px;
+      padding: 8px 10px;
+      border-radius: 10px;
+      background: rgba(255,255,255,0.03);
+    }
+
+    .admin-row span {
+      font-size: 0.9rem;
+      font-weight: 500;
+    }
+
+    .admin-row input[type="text"] {
+      font-size: 0.85rem;
+      padding: 7px 9px;
+      border-radius: 8px;
+    }
+
+    .admin-logo-controls {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .admin-logo-preview {
+      width: 34px;
+      height: 34px;
+      border-radius: 8px;
+      overflow: hidden;
+      border: 1px solid rgba(255,255,255,0.2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(0,0,0,0.3);
+    }
+
+    .admin-logo-preview img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      filter: brightness(0) invert(1); /* preview aussi en blanc */
+    }
+
+    .admin-file-input {
+      font-size: 0.7rem;
+    }
+
+    .admin-delete {
+      border: none;
+      background: transparent;
+      color: #ff7070;
+      font-size: 1.1rem;
+      cursor: pointer;
+    }
+
+    .admin-empty {
+      font-size: 0.85rem;
+      opacity: 0.7;
+      margin-top: 8px;
+    }
+
+    @media (max-width: 640px) {
+      .admin-header-row,
+      .admin-row {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .container {
+        padding: 24px 18px;
+        border-radius: 18px;
+      }
+      .title {
+        font-size: 1.2rem;
+      }
+      .subtitle {
+        font-size: 0.85rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- PAGE 1 : CONNEXION / CRÉATION DE COMPTE -->
+  <div class="container" id="loginBox">
+    <div class="logo-wrapper">
+      <!-- Logo FREEDS global -->
+      <img src="Fichier 8.png" alt="FREEDS" />
+    </div>
+
+    <div class="title">Portail clients</div>
+    <div class="subtitle">
+      Accès sécurisé à vos médias & livrables FREEDS.
+    </div>
+
+    <form id="loginForm">
+      <div class="form-group">
+        <label for="clientId">Identifiant client</label>
+        <input
+          type="text"
+          id="clientId"
+          name="clientId"
+          placeholder="Nom de votre entreprise"
+          autocomplete="off"
+          required
+        />
+      </div>
+
+      <div class="form-group">
+        <label for="password">Mot de passe</label>
+        <input
+          type="password"
+          id="password"
+          name="password"
+          placeholder="Mot de passe"
+          autocomplete="off"
+          required
+        />
+      </div>
+
+      <div class="form-group">
+        <label for="passwordConfirm">Confirmer le mot de passe (pour création)</label>
+        <input
+          type="password"
+          id="passwordConfirm"
+          name="passwordConfirm"
+          placeholder="Confirmez le mot de passe"
+          autocomplete="off"
+        />
+      </div>
+
+      <button type="submit" class="btn" id="btnLogin">Se connecter</button>
+      <button type="button" class="btn-secondary" id="btnRegister">Créer un compte</button>
+
+      <div id="error" class="error"></div>
+
+      <div class="helper">
+        Problème de connexion ? Contactez-nous.<br />
+      </div>
+    </form>
+  </div>
+
+  <!-- PAGE 2 : MENU CLIENT (après connexion) -->
+  <div class="container" id="menuBox" style="display: none;">
+    <div class="logo-wrapper">
+      <!-- Logo client (upload) ou FREEDS -->
+      <img id="clientLogo" src="Fichier 8.png" alt="Logo client" />
+    </div>
+
+    <div class="title" id="welcomeTitle">Espace client</div>
+    <div class="subtitle" id="welcomeSubtitle">
+      Que souhaitez-vous faire ?
+    </div>
+
+    <button id="btnFiles" class="btn">Accéder à vos fichiers</button>
+    <button id="btnFrame" class="btn-secondary">Visionner le projet en cours</button>
+    <button id="btnLogout" class="btn-secondary">🏠 Retour à l'écran de connexion</button>
+
+    <div class="footer">
+      Connecté via le portail FREEDS.
+    </div>
+  </div>
+
+  <!-- OVERLAY ADMIN : Cmd+M / Ctrl+M -->
+  <div class="overlay" id="adminOverlay">
+    <div class="overlay-content">
+      <div class="overlay-header">
+        <div class="overlay-title">Réglages comptes & liens</div>
+        <button class="overlay-close" id="adminClose">&times;</button>
+      </div>
+
+      <div class="admin-tip">
+        Raccourci clavier : <strong>Cmd+M</strong> (Mac) / <strong>Ctrl+M</strong> (Windows) pour ouvrir/fermer ce panneau.<br/>
+        Pour chaque client, tu peux renseigner un lien Google&nbsp;Drive, un lien Frame.io, et un logo (affiché en blanc sur son espace).
+      </div>
+
+      <div class="admin-header-row">
+        <div>Client</div>
+        <div>Lien Google Drive</div>
+        <div>Lien Frame.io</div>
+        <div>Logo / Supprimer</div>
+      </div>
+
+      <div id="adminClientList"></div>
+      <div id="adminEmpty" class="admin-empty" style="display:none;">
+        Aucun client pour le moment. Crée un compte depuis l'écran de connexion.
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // --- "Base de données" locale (stockée dans localStorage) ---
+    // Structure : { clientId: { password: "...", drive: "...", frame: "...", logo: "dataURL" }, ... }
+    let clients = {};
+    let currentClientId = null;
+
+    function loadClients() {
+      const raw = localStorage.getItem("freedsClients");
+      if (raw) {
+        try {
+          clients = JSON.parse(raw);
+        } catch (e) {
+          console.error("Erreur JSON clients :", e);
+          clients = {};
+        }
+      }
+    }
+
+    function saveClients() {
+      localStorage.setItem("freedsClients", JSON.stringify(clients));
+    }
+
+    function saveSession() {
+      localStorage.setItem("freedsCurrentClientId", currentClientId || "");
+      localStorage.setItem("freedsCurrentView", currentClientId ? "menu" : "login");
+    }
+
+    // --- Mise à jour de la liste dans le panneau admin ---
+    function refreshAdminList() {
+      const list = document.getElementById("adminClientList");
+      const emptyMsg = document.getElementById("adminEmpty");
+      list.innerHTML = "";
+
+      const ids = Object.keys(clients);
+      if (ids.length === 0) {
+        emptyMsg.style.display = "block";
+        return;
+      }
+      emptyMsg.style.display = "none";
+
+      ids.forEach((id) => {
+        const data = clients[id];
+
+        const row = document.createElement("div");
+        row.className = "admin-row";
+
+        // Colonne 1 : nom client
+        const label = document.createElement("span");
+        label.textContent = id;
+
+        // Colonne 2 : Drive
+        const inputDrive = document.createElement("input");
+        inputDrive.type = "text";
+        inputDrive.placeholder = "https://drive.google.com/…";
+        inputDrive.value = data.drive || "";
+        inputDrive.addEventListener("input", () => {
+          clients[id].drive = inputDrive.value.trim();
+          saveClients();
+        });
+
+        // Colonne 3 : Frame.io
+        const inputFrame = document.createElement("input");
+        inputFrame.type = "text";
+        inputFrame.placeholder = "https://frame.io/…";
+        inputFrame.value = data.frame || "";
+        inputFrame.addEventListener("input", () => {
+          clients[id].frame = inputFrame.value.trim();
+          saveClients();
+        });
+
+        // Colonne 4 : Logo + delete
+        const logoCell = document.createElement("div");
+        logoCell.className = "admin-logo-controls";
+
+        const preview = document.createElement("div");
+        preview.className = "admin-logo-preview";
+        const previewImg = document.createElement("img");
+        if (data.logo) {
+          previewImg.src = data.logo;
+          previewImg.style.opacity = "1";
+        } else {
+          previewImg.style.opacity = "0.3";
+        }
+        preview.appendChild(previewImg);
+
+        const fileInput = document.createElement("input");
+        fileInput.type = "file";
+        fileInput.accept = "image/*";
+        fileInput.className = "admin-file-input";
+        fileInput.addEventListener("change", (e) => {
+          const file = e.target.files[0];
+          if (!file) return;
+          const reader = new FileReader();
+          reader.onload = (evt) => {
+            const dataURL = evt.target.result;
+            clients[id].logo = dataURL;
+            saveClients();
+            previewImg.src = dataURL;
+            previewImg.style.opacity = "1";
+          };
+          reader.readAsDataURL(file);
+        });
+
+        const deleteBtn = document.createElement("button");
+        deleteBtn.className = "admin-delete";
+        deleteBtn.title = "Supprimer ce client";
+        deleteBtn.innerHTML = "&times;";
+        deleteBtn.addEventListener("click", () => {
+          if (confirm(`Supprimer le client "${id}" ?`)) {
+            delete clients[id];
+            saveClients();
+            if (currentClientId === id) {
+              currentClientId = null;
+              saveSession();
+              showLoginView();
+            }
+            refreshAdminList();
+          }
+        });
+
+        logoCell.appendChild(preview);
+        logoCell.appendChild(fileInput);
+        logoCell.appendChild(deleteBtn);
+
+        row.appendChild(label);
+        row.appendChild(inputDrive);
+        row.appendChild(inputFrame);
+        row.appendChild(logoCell);
+
+        list.appendChild(row);
+      });
+    }
+
+    function openAdmin() {
+      refreshAdminList();
+      document.getElementById("adminOverlay").style.display = "flex";
+    }
+
+    function closeAdmin() {
+      document.getElementById("adminOverlay").style.display = "none";
+    }
+
+    // --- Affichage login / menu ---
+    function showLoginView() {
+      const loginBox = document.getElementById("loginBox");
+      const menuBox = document.getElementById("menuBox");
+      loginBox.style.display = "block";
+      menuBox.style.display = "none";
+    }
+
+    function showMenuForClient(id) {
+      const loginBox = document.getElementById("loginBox");
+      const menuBox = document.getElementById("menuBox");
+      const welcomeTitle = document.getElementById("welcomeTitle");
+      const welcomeSubtitle = document.getElementById("welcomeSubtitle");
+      const clientLogo = document.getElementById("clientLogo");
+
+      const data = clients[id];
+      welcomeTitle.textContent = `Bienvenue, ${id} !`;
+      welcomeSubtitle.textContent = "Que souhaitez-vous faire ?";
+
+      // Logo : si custom, on l'affiche en blanc via classe .white-logo
+      if (data && data.logo) {
+        clientLogo.src = data.logo;
+        clientLogo.classList.add("white-logo");
+      } else {
+        clientLogo.src = "Fichier 8.png";
+        clientLogo.classList.remove("white-logo");
+      }
+
+      loginBox.style.display = "none";
+      menuBox.style.display = "block";
+    }
+
+    // --- Gestion du code admin (stocké dans localStorage, pas dans le code) ---
+    function ensureAdminCode() {
+      let code = localStorage.getItem("freedsAdminCode");
+      if (!code) {
+        const newCode = prompt("Définis un code admin (à retenir) :");
+        if (!newCode) return null;
+        localStorage.setItem("freedsAdminCode", newCode);
+        return newCode;
+      }
+      return code;
+    }
+
+    function askAdminAndToggle() {
+      const adminOverlay = document.getElementById("adminOverlay");
+      const stored = ensureAdminCode();
+      if (!stored) return;
+
+      const entered = prompt("Code admin :");
+      if (entered !== stored) {
+        alert("Code admin incorrect.");
+        return;
+      }
+
+      if (adminOverlay.style.display === "flex") {
+        closeAdmin();
+      } else {
+        openAdmin();
+      }
+    }
+
+    // --- App logique ---
+    window.addEventListener("DOMContentLoaded", () => {
+      loadClients();
+
+      const form = document.getElementById("loginForm");
+      const errorBox = document.getElementById("error");
+      const btnFiles = document.getElementById("btnFiles");
+      const btnFrame = document.getElementById("btnFrame");
+      const btnLogout = document.getElementById("btnLogout");
+      const btnRegister = document.getElementById("btnRegister");
+      const adminOverlay = document.getElementById("adminOverlay");
+      const adminClose = document.getElementById("adminClose");
+
+      // Récupérer session
+      const savedClientId = localStorage.getItem("freedsCurrentClientId") || "";
+      const savedView = localStorage.getItem("freedsCurrentView") || "login";
+
+      if (savedClientId && clients[savedClientId] && savedView === "menu") {
+        currentClientId = savedClientId;
+        showMenuForClient(savedClientId);
+      } else {
+        currentClientId = null;
+        showLoginView();
+        saveSession();
+      }
+
+      // Connexion
+      form.addEventListener("submit", function (e) {
+        e.preventDefault();
+        errorBox.style.color = "#ffb3b3";
+        errorBox.textContent = "";
+
+        const id = document.getElementById("clientId").value.trim().toLowerCase();
+        const pwd = document.getElementById("password").value.trim();
+
+        if (!id || !pwd) {
+          errorBox.textContent = "Veuillez renseigner identifiant et mot de passe.";
+          return;
+        }
+
+        if (!clients[id]) {
+          errorBox.textContent = "Identifiant introuvable. Créez d'abord un compte.";
+          return;
+        }
+
+        if (clients[id].password !== pwd) {
+          errorBox.textContent = "Mot de passe incorrect.";
+          return;
+        }
+
+        // OK : connexion
+        currentClientId = id;
+        saveSession();
+        showMenuForClient(id);
+      });
+
+      // Création de compte
+      btnRegister.addEventListener("click", function () {
+        errorBox.style.color = "#ffb3b3";
+        errorBox.textContent = "";
+
+        const id = document.getElementById("clientId").value.trim().toLowerCase();
+        const pwd = document.getElementById("password").value.trim();
+        const pwd2 = document.getElementById("passwordConfirm").value.trim();
+
+        if (!id || !pwd || !pwd2) {
+          errorBox.textContent = "Remplissez identifiant + mot de passe + confirmation.";
+          return;
+        }
+
+        if (clients[id]) {
+          errorBox.textContent = "Cet identifiant existe déjà.";
+          return;
+        }
+
+        if (pwd !== pwd2) {
+          errorBox.textContent = "Les mots de passe ne correspondent pas.";
+          return;
+        }
+
+        // Création
+        clients[id] = {
+          password: pwd,
+          drive: "",
+          frame: "",
+          logo: ""
+        };
+        saveClients();
+
+        errorBox.style.color = "#b2ffb2";
+        errorBox.textContent = "Compte créé. Vous pouvez maintenant vous connecter.";
+        setTimeout(() => {
+          errorBox.textContent = "";
+          errorBox.style.color = "#ffb3b3";
+        }, 2500);
+
+        document.getElementById("passwordConfirm").value = "";
+      });
+
+      // Accès fichiers
+      btnFiles.addEventListener("click", () => {
+        if (!currentClientId) return;
+        const data = clients[currentClientId];
+        if (!data.drive) {
+          alert("Aucun lien Google Drive configuré pour ce client.");
+          return;
+        }
+        window.open(data.drive, "_blank");
+      });
+
+      // Accès Frame.io
+      btnFrame.addEventListener("click", () => {
+        if (!currentClientId) return;
+        const data = clients[currentClientId];
+        if (!data.frame) {
+          alert("Aucun lien Frame.io configuré pour ce client.");
+          return;
+        }
+        window.open(data.frame, "_blank");
+      });
+
+      // Retour / déconnexion
+      btnLogout.addEventListener("click", () => {
+        currentClientId = null;
+        saveSession();
+        showLoginView();
+      });
+
+      // Admin overlay
+      adminClose.addEventListener("click", closeAdmin);
+      adminOverlay.addEventListener("click", (e) => {
+        if (e.target === adminOverlay) {
+          closeAdmin();
+        }
+      });
+
+      // Raccourcis clavier : Cmd+M (Mac) / Ctrl+M (Win)
+      document.addEventListener("keydown", (e) => {
+        const isCmdOrCtrl = e.metaKey || e.ctrlKey;
+        if (isCmdOrCtrl && e.key.toLowerCase() === "m") {
+          e.preventDefault();
+          askAdminAndToggle();
+        }
+        if (e.key === "Escape" && adminOverlay.style.display === "flex") {
+          closeAdmin();
+        }
+      });
+    });
+  </script>
+</body>
+</html>
