@@ -6,6 +6,9 @@
   <link rel="icon" type="image/png" href="Fichier 8.png" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
+  <!-- Supabase JS (CDN) -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
   <style>
     * {
       box-sizing: border-box;
@@ -335,7 +338,6 @@
   <!-- PAGE 1 : CONNEXION / CRÉATION DE COMPTE -->
   <div class="container" id="loginBox">
     <div class="logo-wrapper">
-      <!-- Logo FREEDS global -->
       <img src="Fichier 8.png" alt="FREEDS" />
     </div>
 
@@ -387,14 +389,14 @@
 
       <div class="helper">
         Problème de connexion ? Contactez-nous.<br />
+        <span style="opacity:0.6;">(Panneau admin : Cmd+M / Ctrl+M)</span>
       </div>
     </form>
   </div>
 
-  <!-- PAGE 2 : MENU CLIENT (après connexion) -->
+  <!-- PAGE 2 : MENU CLIENT -->
   <div class="container" id="menuBox" style="display: none;">
     <div class="logo-wrapper">
-      <!-- Logo client (upload) ou FREEDS -->
       <img id="clientLogo" src="Fichier 8.png" alt="Logo client" />
     </div>
 
@@ -421,8 +423,8 @@
       </div>
 
       <div class="admin-tip">
-        Raccourci clavier : <strong>Cmd+M</strong> (Mac) / <strong>Ctrl+M</strong> (Windows) pour ouvrir/fermer ce panneau.<br/>
-        Pour chaque client, tu peux renseigner un lien Google&nbsp;Drive, un lien Frame.io, et un logo (affiché en blanc sur son espace).
+        Raccourci clavier : <strong>Cmd+M</strong> (Mac) / <strong>Ctrl+M</strong> (Windows).<br/>
+        Pour chaque client, tu peux renseigner un lien Google Drive, un lien Frame.io, et un logo (affiché en blanc sur son espace).
       </div>
 
       <div class="admin-header-row">
@@ -440,84 +442,142 @@
   </div>
 
   <script>
-    // --- "Base de données" locale (stockée dans localStorage) ---
-    // Structure : { clientId: { password: "...", drive: "...", frame: "...", logo: "dataURL" }, ... }
-    let clients = {};
+    // ---------- CONFIG SUPABASE ----------
+    const SUPABASE_URL = "https://saacqqhdtdxahzlzrcqf.supabase.co";
+    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNhYWNxcWhkdGR4YWh6bHpyY3FmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM5MjEzOTYsImV4cCI6MjA3OTQ5NzM5Nn0.ni8zm_641HSJnqbXb__r7V728uuPevee5bqDEr9AoOI";
+
+    const { createClient } = supabase;
+    const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    // identifiant du client connecté (colonne "identifier")
     let currentClientId = null;
-
-    function loadClients() {
-      const raw = localStorage.getItem("freedsClients");
-      if (raw) {
-        try {
-          clients = JSON.parse(raw);
-        } catch (e) {
-          console.error("Erreur JSON clients :", e);
-          clients = {};
-        }
-      }
-    }
-
-    function saveClients() {
-      localStorage.setItem("freedsClients", JSON.stringify(clients));
-    }
 
     function saveSession() {
       localStorage.setItem("freedsCurrentClientId", currentClientId || "");
       localStorage.setItem("freedsCurrentView", currentClientId ? "menu" : "login");
     }
 
-    // --- Mise à jour de la liste dans le panneau admin ---
-    function refreshAdminList() {
+    // ---------- VUES ----------
+    function showLoginView() {
+      document.getElementById("loginBox").style.display = "block";
+      document.getElementById("menuBox").style.display = "none";
+    }
+
+    async function showMenuForClient(clientId) {
+      const loginBox = document.getElementById("loginBox");
+      const menuBox = document.getElementById("menuBox");
+      const welcomeTitle = document.getElementById("welcomeTitle");
+      const welcomeSubtitle = document.getElementById("welcomeSubtitle");
+      const clientLogo = document.getElementById("clientLogo");
+
+      // Récupère les infos client depuis Supabase
+      const { data, error } = await db
+        .from("clients")
+        .select("identifier, drive_url, frame_url, logo_url")
+        .eq("identifier", clientId)
+        .maybeSingle();
+
+      if (error || !data) {
+        console.error("Erreur Supabase (fetch client pour menu):", error);
+        alert("Impossible de charger les données de ce client.");
+        showLoginView();
+        return;
+      }
+
+      welcomeTitle.textContent = `Bienvenue, ${data.identifier} !`;
+      welcomeSubtitle.textContent = "Que souhaitez-vous faire ?";
+
+      if (data.logo_url) {
+        clientLogo.src = data.logo_url;
+        clientLogo.classList.add("white-logo");
+      } else {
+        clientLogo.src = "Fichier 8.png";
+        clientLogo.classList.remove("white-logo");
+      }
+
+      loginBox.style.display = "none";
+      menuBox.style.display = "block";
+    }
+
+    // ---------- ADMIN PANEL ----------
+    async function refreshAdminList() {
       const list = document.getElementById("adminClientList");
       const emptyMsg = document.getElementById("adminEmpty");
       list.innerHTML = "";
 
-      const ids = Object.keys(clients);
-      if (ids.length === 0) {
+      const { data, error } = await db
+        .from("clients")
+        .select("identifier, drive_url, frame_url, logo_url")
+        .order("identifier", { ascending: true });
+
+      if (error) {
+        console.error("Erreur Supabase (admin list):", error);
         emptyMsg.style.display = "block";
+        emptyMsg.textContent = "Erreur de chargement des clients.";
         return;
       }
+
+      if (!data || data.length === 0) {
+        emptyMsg.style.display = "block";
+        emptyMsg.textContent = "Aucun client pour le moment. Crée un compte depuis l'écran de connexion.";
+        return;
+      }
+
       emptyMsg.style.display = "none";
 
-      ids.forEach((id) => {
-        const data = clients[id];
+      data.forEach((row) => {
+        const id = row.identifier;
 
-        const row = document.createElement("div");
-        row.className = "admin-row";
+        const divRow = document.createElement("div");
+        divRow.className = "admin-row";
 
-        // Colonne 1 : nom client
+        // Client
         const label = document.createElement("span");
         label.textContent = id;
 
-        // Colonne 2 : Drive
+        // Drive
         const inputDrive = document.createElement("input");
         inputDrive.type = "text";
         inputDrive.placeholder = "https://drive.google.com/…";
-        inputDrive.value = data.drive || "";
-        inputDrive.addEventListener("input", () => {
-          clients[id].drive = inputDrive.value.trim();
-          saveClients();
+        inputDrive.value = row.drive_url || "";
+        inputDrive.addEventListener("change", async () => {
+          const newVal = inputDrive.value.trim();
+          const { error } = await db
+            .from("clients")
+            .update({ drive_url: newVal })
+            .eq("identifier", id);
+          if (error) {
+            console.error("Erreur Supabase (update drive_url):", error);
+            alert("Erreur lors de la mise à jour du lien Drive.");
+          }
         });
 
-        // Colonne 3 : Frame.io
+        // Frame.io
         const inputFrame = document.createElement("input");
         inputFrame.type = "text";
         inputFrame.placeholder = "https://frame.io/…";
-        inputFrame.value = data.frame || "";
-        inputFrame.addEventListener("input", () => {
-          clients[id].frame = inputFrame.value.trim();
-          saveClients();
+        inputFrame.value = row.frame_url || "";
+        inputFrame.addEventListener("change", async () => {
+          const newVal = inputFrame.value.trim();
+          const { error } = await db
+            .from("clients")
+            .update({ frame_url: newVal })
+            .eq("identifier", id);
+          if (error) {
+            console.error("Erreur Supabase (update frame_url):", error);
+            alert("Erreur lors de la mise à jour du lien Frame.io.");
+          }
         });
 
-        // Colonne 4 : Logo + delete
+        // Logo + delete
         const logoCell = document.createElement("div");
         logoCell.className = "admin-logo-controls";
 
         const preview = document.createElement("div");
         preview.className = "admin-logo-preview";
         const previewImg = document.createElement("img");
-        if (data.logo) {
-          previewImg.src = data.logo;
+        if (row.logo_url) {
+          previewImg.src = row.logo_url;
           previewImg.style.opacity = "1";
         } else {
           previewImg.style.opacity = "0.3";
@@ -532,10 +592,17 @@
           const file = e.target.files[0];
           if (!file) return;
           const reader = new FileReader();
-          reader.onload = (evt) => {
+          reader.onload = async (evt) => {
             const dataURL = evt.target.result;
-            clients[id].logo = dataURL;
-            saveClients();
+            const { error } = await db
+              .from("clients")
+              .update({ logo_url: dataURL })
+              .eq("identifier", id);
+            if (error) {
+              console.error("Erreur Supabase (update logo_url):", error);
+              alert("Erreur lors de la mise à jour du logo.");
+              return;
+            }
             previewImg.src = dataURL;
             previewImg.style.opacity = "1";
           };
@@ -546,29 +613,35 @@
         deleteBtn.className = "admin-delete";
         deleteBtn.title = "Supprimer ce client";
         deleteBtn.innerHTML = "&times;";
-        deleteBtn.addEventListener("click", () => {
-          if (confirm(`Supprimer le client "${id}" ?`)) {
-            delete clients[id];
-            saveClients();
-            if (currentClientId === id) {
-              currentClientId = null;
-              saveSession();
-              showLoginView();
-            }
-            refreshAdminList();
+        deleteBtn.addEventListener("click", async () => {
+          if (!confirm(`Supprimer le client "${id}" ?`)) return;
+          const { error } = await db
+            .from("clients")
+            .delete()
+            .eq("identifier", id);
+          if (error) {
+            console.error("Erreur Supabase (delete client):", error);
+            alert("Erreur lors de la suppression du client.");
+            return;
           }
+          if (currentClientId === id) {
+            currentClientId = null;
+            saveSession();
+            showLoginView();
+          }
+          refreshAdminList();
         });
 
         logoCell.appendChild(preview);
         logoCell.appendChild(fileInput);
         logoCell.appendChild(deleteBtn);
 
-        row.appendChild(label);
-        row.appendChild(inputDrive);
-        row.appendChild(inputFrame);
-        row.appendChild(logoCell);
+        divRow.appendChild(label);
+        divRow.appendChild(inputDrive);
+        divRow.appendChild(inputFrame);
+        divRow.appendChild(logoCell);
 
-        list.appendChild(row);
+        list.appendChild(divRow);
       });
     }
 
@@ -581,39 +654,7 @@
       document.getElementById("adminOverlay").style.display = "none";
     }
 
-    // --- Affichage login / menu ---
-    function showLoginView() {
-      const loginBox = document.getElementById("loginBox");
-      const menuBox = document.getElementById("menuBox");
-      loginBox.style.display = "block";
-      menuBox.style.display = "none";
-    }
-
-    function showMenuForClient(id) {
-      const loginBox = document.getElementById("loginBox");
-      const menuBox = document.getElementById("menuBox");
-      const welcomeTitle = document.getElementById("welcomeTitle");
-      const welcomeSubtitle = document.getElementById("welcomeSubtitle");
-      const clientLogo = document.getElementById("clientLogo");
-
-      const data = clients[id];
-      welcomeTitle.textContent = `Bienvenue, ${id} !`;
-      welcomeSubtitle.textContent = "Que souhaitez-vous faire ?";
-
-      // Logo : si custom, on l'affiche en blanc via classe .white-logo
-      if (data && data.logo) {
-        clientLogo.src = data.logo;
-        clientLogo.classList.add("white-logo");
-      } else {
-        clientLogo.src = "Fichier 8.png";
-        clientLogo.classList.remove("white-logo");
-      }
-
-      loginBox.style.display = "none";
-      menuBox.style.display = "block";
-    }
-
-    // --- Gestion du code admin (stocké dans localStorage, pas dans le code) ---
+    // ---------- CODE ADMIN ----------
     function ensureAdminCode() {
       let code = localStorage.getItem("freedsAdminCode");
       if (!code) {
@@ -643,10 +684,8 @@
       }
     }
 
-    // --- App logique ---
-    window.addEventListener("DOMContentLoaded", () => {
-      loadClients();
-
+    // ---------- APP ----------
+    window.addEventListener("DOMContentLoaded", async () => {
       const form = document.getElementById("loginForm");
       const errorBox = document.getElementById("error");
       const btnFiles = document.getElementById("btnFiles");
@@ -656,13 +695,13 @@
       const adminOverlay = document.getElementById("adminOverlay");
       const adminClose = document.getElementById("adminClose");
 
-      // Récupérer session
+      // Session
       const savedClientId = localStorage.getItem("freedsCurrentClientId") || "";
       const savedView = localStorage.getItem("freedsCurrentView") || "login";
 
-      if (savedClientId && clients[savedClientId] && savedView === "menu") {
+      if (savedClientId && savedView === "menu") {
         currentClientId = savedClientId;
-        showMenuForClient(savedClientId);
+        await showMenuForClient(savedClientId);
       } else {
         currentClientId = null;
         showLoginView();
@@ -670,7 +709,7 @@
       }
 
       // Connexion
-      form.addEventListener("submit", function (e) {
+      form.addEventListener("submit", async (e) => {
         e.preventDefault();
         errorBox.style.color = "#ffb3b3";
         errorBox.textContent = "";
@@ -683,24 +722,35 @@
           return;
         }
 
-        if (!clients[id]) {
+        const { data, error } = await db
+          .from("clients")
+          .select("identifier, password")
+          .eq("identifier", id)
+          .maybeSingle();
+
+        if (error) {
+          console.error("Erreur Supabase (login select):", error);
+          errorBox.textContent = "Erreur serveur. Réessayez plus tard.";
+          return;
+        }
+
+        if (!data) {
           errorBox.textContent = "Identifiant introuvable. Créez d'abord un compte.";
           return;
         }
 
-        if (clients[id].password !== pwd) {
+        if (data.password !== pwd) {
           errorBox.textContent = "Mot de passe incorrect.";
           return;
         }
 
-        // OK : connexion
         currentClientId = id;
         saveSession();
-        showMenuForClient(id);
+        await showMenuForClient(id);
       });
 
       // Création de compte
-      btnRegister.addEventListener("click", function () {
+      btnRegister.addEventListener("click", async () => {
         errorBox.style.color = "#ffb3b3";
         errorBox.textContent = "";
 
@@ -713,24 +763,45 @@
           return;
         }
 
-        if (clients[id]) {
-          errorBox.textContent = "Cet identifiant existe déjà.";
-          return;
-        }
-
         if (pwd !== pwd2) {
           errorBox.textContent = "Les mots de passe ne correspondent pas.";
           return;
         }
 
-        // Création
-        clients[id] = {
-          password: pwd,
-          drive: "",
-          frame: "",
-          logo: ""
-        };
-        saveClients();
+        // Vérifie que l'identifiant n'existe pas déjà
+        const { data: existing, error: selectError } = await db
+          .from("clients")
+          .select("identifier")
+          .eq("identifier", id)
+          .maybeSingle();
+
+        if (selectError) {
+          console.error("Erreur Supabase (check existing):", selectError);
+          errorBox.textContent = "Erreur serveur. Réessayez plus tard.";
+          return;
+        }
+
+        if (existing) {
+          errorBox.textContent = "Cet identifiant existe déjà.";
+          return;
+        }
+
+        // Insert
+        const { error } = await db
+          .from("clients")
+          .insert({
+            identifier: id,
+            password: pwd,
+            drive_url: "",
+            frame_url: "",
+            logo_url: ""
+          });
+
+        if (error) {
+          console.error("Erreur Supabase (création compte):", error);
+          errorBox.textContent = "Erreur Supabase (création compte). Regarde la console.";
+          return;
+        }
 
         errorBox.style.color = "#b2ffb2";
         errorBox.textContent = "Compte créé. Vous pouvez maintenant vous connecter.";
@@ -743,25 +814,49 @@
       });
 
       // Accès fichiers
-      btnFiles.addEventListener("click", () => {
+      btnFiles.addEventListener("click", async () => {
         if (!currentClientId) return;
-        const data = clients[currentClientId];
-        if (!data.drive) {
+        const { data, error } = await db
+          .from("clients")
+          .select("drive_url")
+          .eq("identifier", currentClientId)
+          .maybeSingle();
+
+        if (error) {
+          console.error("Erreur Supabase (get drive_url):", error);
+          alert("Erreur lors de la récupération du lien Drive.");
+          return;
+        }
+
+        if (!data || !data.drive_url) {
           alert("Aucun lien Google Drive configuré pour ce client.");
           return;
         }
-        window.open(data.drive, "_blank");
+
+        window.open(data.drive_url, "_blank");
       });
 
       // Accès Frame.io
-      btnFrame.addEventListener("click", () => {
+      btnFrame.addEventListener("click", async () => {
         if (!currentClientId) return;
-        const data = clients[currentClientId];
-        if (!data.frame) {
+        const { data, error } = await db
+          .from("clients")
+          .select("frame_url")
+          .eq("identifier", currentClientId)
+          .maybeSingle();
+
+        if (error) {
+          console.error("Erreur Supabase (get frame_url):", error);
+          alert("Erreur lors de la récupération du lien Frame.io.");
+          return;
+        }
+
+        if (!data || !data.frame_url) {
           alert("Aucun lien Frame.io configuré pour ce client.");
           return;
         }
-        window.open(data.frame, "_blank");
+
+        window.open(data.frame_url, "_blank");
       });
 
       // Retour / déconnexion
